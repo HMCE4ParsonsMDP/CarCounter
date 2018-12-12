@@ -42,16 +42,13 @@ def main():
         fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
 
         for spot in spots:
-            diff = check_spot(frame, flow, fgmask, spot[0], spot[1])
-            if diff > 10 and spot[2] == 0:
-                spot[2] = 1
-            if diff < 10 and spot[2] == 1:
-                spot[2] = 0
+            diff, flowval = check_spot(frame, flow, fgmask, spot[0], spot[1])
+            if diff > 10 and flowval > 0.3 and spot[2] == 0:
                 spot[3] = 1 - spot[3]
-            if diff > 20:
-                spot[3] = 1
-            else:
-                spot[3] = 0
+                spot[2] = 1
+            elif diff < 10 and flowval < 0.3:
+                spot[2] = 0
+
 
             color = (0,255,0)
             if spot[3] == 1:
@@ -62,11 +59,11 @@ def main():
             print("Spot:", spot, diff)
 
         fl = draw_flow(frame, flow)
-        cv2.imshow('flow', fl)
+        #cv2.imshow('flow', fl)
         #cv2.imshow('frame',fgmask)
         outputdir = "frames/"
         numStr = '{0:05d}'.format(framecount)
-        cv2.imwrite(outputdir+'frame' + numStr + ".jpg", frame)
+        cv2.imwrite(outputdir+'frame' + numStr + ".jpg", fl)
         cv2.imwrite(outputdir+'fgmask' + numStr + ".jpg", fgmask)
         k = cv2.waitKey(1) & 0xff
         if k == 27:
@@ -90,9 +87,13 @@ def check_spot(frame, flow, mask, pos, size):
     (x, y) = pos
     (h, w) = size
     crop_img = mask[y:y+h, x:x+w]
+    crop_flow = np.array(flow)[y:y+h, x:x+w]
+    flowval = np.square(crop_flow).mean()
+    print(flowval)
+
     #cv2.imshow('cropped', crop_img)
     mean = np.mean(crop_img)
-    return mean
+    return (mean, flowval)
 
 if __name__ == "__main__":
     main()
