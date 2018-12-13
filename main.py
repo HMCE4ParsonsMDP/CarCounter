@@ -49,7 +49,7 @@ def main():
         framecount += 1
 
 
-        # debug informatin so we can see that the code is running properly
+        # debug information so we can see that the code is running properly
         print("frame:", framecount)
 
         # give the background subtractor some time to get trained initially because it
@@ -57,6 +57,7 @@ def main():
         if framecount < 400:
             fgmask = fgbg.apply(frame)
             print("training")
+            # skip everything else in the loop and just run this again
             continue
 
         ###################
