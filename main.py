@@ -65,17 +65,18 @@ def main():
 
         # run the background subtraction and train it on the same frame
         # a learning rate of 0.001 seems to work well. 0.008 is too slow
-        # it also cannot be too much faster or it would not work on vehicles parking slowly
+        # it also cannot be too much faster or it does not work on vehicles parking slowly
         fgmask = fgbg.apply(frame, learningRate=0.001)
 
         # use our kernel to clean up the mask a little bit
         fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
 
-        # create a greyscale version of the image for processing
+        # create a greyscale version of the image for movement processing
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # use the Farenback algorithm to find the movement in the frame
+        # use Gunnar Farneback’s algorithm to find the movement in the frame
         # these parameters seem to work well and were used from the OpenCV example for this algorithm
+        # https://docs.opencv.org/2.4/modules/video/doc/motion_analysis_and_object_tracking.html#calcopticalflowfarneback
         flow = cv2.calcOpticalFlowFarneback(prevgray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
         # update the previous greyscale image now that we have used it for comparison
         prevgray = gray
@@ -90,13 +91,24 @@ def main():
             # create a finite state machine with 4 states
             # spot[3] is whether or not the spot is occupied
             # spot[2] is whether or not the spot is in a transition state (car entering or exiting)
+            # the states are:
+            # 1. transitioning to full (car is entering the spot)
+            # 2. full (car is fully parked)
+            # 3. transitioning to empty (car is exiting the spot)
+            # 4. empty (spot is empty)
+            
+            # we did a fair bit of tuning these values for the thresholds. If the flowval is too small, then
+            # it does not get cars which park slowly, however if it is too big it will not notice all times
+            # when a car parks
             if diff > 50 and flowval > 0.1 and spot[2] == 0:
                 spot[3] = 1 - spot[3]
                 spot[2] = 1
+            # if we get here, it means that the car has completed parking, so we can
+            # take the spot out of the transitioning state
             elif flowval < 0.01:
                 spot[2] = 0
 
-            # display those green or red squares depending on if the spot is empty or full
+            # display the green or red squares depending on if the spot is empty or full
             color = (0,255,0)
             if spot[3] == 1:
                 color = (0,0,255)
@@ -104,15 +116,18 @@ def main():
             size = spot[1]
             # actually draw the square
             cv2.rectangle(frame,pos,(pos[0]+size[0],pos[1]+size[1]),color,3)
-            # some debug so we can verify that the code is showing the 
+            
+            
+            # some debug so we can verify that the code is working correctly
             print("Spot:", spot, diff, flowval)
 
-        # print the number of occupied spots in the parking lot
+        # output the number of occupied spots in the parking lot
         print("Full spots:", sum([spot[3] for spot in spots]))
 
         # save images of the different parts of the processing for use in the videos
         # this would be removed in the final version and is here so we can actually see what the code does
         black = np.zeros((512,512,3), np.uint8)
+        # draw the flow lines for the visualization
         fl = draw_flow(frame, flow)
         outputdir = "frames/"
         numStr = '{0:05d}'.format(framecount)
