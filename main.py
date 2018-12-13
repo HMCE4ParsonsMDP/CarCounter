@@ -2,7 +2,8 @@ import numpy as np
 import cv2
 
 spots = [#[(1100, 1344), (323, 300), 0, 0],
-[(373, 430), (485-373, 545-430), 0, 0],
+[(373, 410), (485-373, 525-410), 0, 0],
+[(240, 410), (345-240, 525-410), 0, 0],
 #[(130, 150), (300, 300), 0, 0],
     #[(480, 150), (300, 300), 0, 0]
 ]
@@ -27,7 +28,7 @@ def main():
         ret, frame = cap.read()
         framecount += 1
         print("frame:", framecount)
-        if framecount < 450:
+        if framecount < 400:
             fgmask = fgbg.apply(frame)
             print("training")
             continue
@@ -35,7 +36,7 @@ def main():
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
 
-        fgmask = fgbg.apply(frame, learningRate=0.0004)
+        fgmask = fgbg.apply(frame, learningRate=0.001)
         flow = cv2.calcOpticalFlowFarneback(prevgray, gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
         prevgray = gray
 
@@ -43,12 +44,11 @@ def main():
 
         for spot in spots:
             diff, flowval = check_spot(frame, flow, fgmask, spot[0], spot[1])
-            if diff > 10 and flowval > 0.3 and spot[2] == 0:
+            if diff > 50 and flowval > 0.1 and spot[2] == 0:
                 spot[3] = 1 - spot[3]
                 spot[2] = 1
-            elif diff < 10 and flowval < 0.3:
+            elif flowval < 0.01:
                 spot[2] = 0
-
 
             color = (0,255,0)
             if spot[3] == 1:
@@ -56,14 +56,15 @@ def main():
             pos = spot[0]
             size = spot[1]
             cv2.rectangle(frame,pos,(pos[0]+size[0],pos[1]+size[1]),color,3)
-            print("Spot:", spot, diff)
+            print("Spot:", spot, diff, flowval)
+        print("Full spots:", sum([spot[3] for spot in spots]))
 
         fl = draw_flow(frame, flow)
         #cv2.imshow('flow', fl)
         #cv2.imshow('frame',fgmask)
         outputdir = "frames/"
         numStr = '{0:05d}'.format(framecount)
-        cv2.imwrite(outputdir+'frame' + numStr + ".jpg", fl)
+        cv2.imwrite(outputdir+'fl' + numStr + ".jpg", fl)
         cv2.imwrite(outputdir+'fgmask' + numStr + ".jpg", fgmask)
         k = cv2.waitKey(1) & 0xff
         if k == 27:
@@ -89,7 +90,6 @@ def check_spot(frame, flow, mask, pos, size):
     crop_img = mask[y:y+h, x:x+w]
     crop_flow = np.array(flow)[y:y+h, x:x+w]
     flowval = np.square(crop_flow).mean()
-    print(flowval)
 
     #cv2.imshow('cropped', crop_img)
     mean = np.mean(crop_img)
