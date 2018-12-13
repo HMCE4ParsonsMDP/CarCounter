@@ -86,8 +86,11 @@ def main():
         ######################
 
         for spot in spots:
-            # just run our check_spot code on each spot's coordinates
+            # run our check_spot code on each spot's coordinates to calculate the required values
             diff, flowval = check_spot(frame, flow, fgmask, spot[0], spot[1])
+            
+            ## analyze the values
+            
             # create a finite state machine with 4 states
             # spot[3] is whether or not the spot is occupied
             # spot[2] is whether or not the spot is in a transition state (car entering or exiting)
