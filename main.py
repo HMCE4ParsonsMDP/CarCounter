@@ -57,7 +57,6 @@ def main():
         if framecount < 400:
             fgmask = fgbg.apply(frame)
             print("training")
-            # skip everything else in the loop and just run this again
             continue
 
         ###################
